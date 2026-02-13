@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Enterprise DDoS Dashboard{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.5.0/dist/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { 
+            background: #0f172a; 
+            color: white; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .sidebar {
+            background: #1e293b;
+            min-height: 100vh;
+        }
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .nav-link {
+            padding: 12px 20px;
+            display: block;
+            color: #cbd5e1;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 4px 0;
+            transition: all 0.2s;
+        }
+        .nav-link:hover {
+            background: #334155;
+            color: white;
+        }
+        .nav-link.active {
+            background: #3b82f6;
+            color: white;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .metric-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+        }
+        .alert-success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+            color: #a7f3d0;
+        }
+    </style>
+</head>
+<body>
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 p-4">
+            <div class="mb-8">
+                <h1 class="text-xl font-bold flex items-center">
+                    <i class="fas fa-shield-alt mr-2"></i>
+                    DDoS Lab
+                </h1>
+                <p class="text-sm text-gray-400">Enterprise v4.0</p>
+            </div>
+            
+            <nav>
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    Dashboard
+                </a>
+                <a href="/firewall" class="nav-link">
+                    <i class="fas fa-fire mr-2"></i>
+                    Firewall
+                </a>
+                <a href="/incidents" class="nav-link">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Incidents
+                </a>
+                <a href="/reports" class="nav-link">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    Reports
+                </a>
+                <a href="/settings" class="nav-link">
+                    <i class="fas fa-cog mr-2"></i>
+                    Settings
+                </a>
+            </nav>
+            
+            <div class="mt-8 p-4 bg-gray-800 rounded-lg">
+                <p class="text-sm font-bold mb-2">System Status</p>
+                <div class="text-sm space-y-1">
+                    <div class="flex justify-between">
+                        <span>Defense Level:</span>
+                        <span id="sidebar-defense" class="font-bold">Enterprise</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Connections:</span>
+                        <span id="sidebar-connections">0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Load:</span>
+                        <span id="sidebar-load">0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let authToken = localStorage.getItem('ddos_auth_token');
+        let socket = null;
+        
+        // API helper
+        async function apiRequest(endpoint, method = 'GET', data = null) {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+            
+            const options = {
+                method,
+                headers
+            };
+            
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            
+            try {
+                const response = await fetch(`/api${endpoint}`, options);
+                if (response.status === 401) {
+                    localStorage.removeItem('ddos_auth_token');
+                    window.location.href = '/login';
+                    return null;
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API request failed:', error);
+                showNotification('API request failed', 'error');
+                return null;
+            }
+        }
+        
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+                type === 'error' ? 'bg-red-500' : 
+                type === 'success' ? 'bg-green-500' : 
+                'bg-blue-500'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${
+                        type === 'error' ? 'fa-exclamation-circle' : 
+                        type === 'success' ? 'fa-check-circle' : 
+                        'fa-info-circle'
+                    } mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // Format bytes
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Initialize WebSocket
+        function initWebSocket() {
+            if (socket) return;
+            
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('WebSocket connected');
+            });
+            
+            socket.on('metrics_update', (data) => {
+                // Update sidebar
+                if (data.connections) {
+                    document.getElementById('sidebar-connections').textContent = 
+                        data.connections.total.toLocaleString();
+                }
+                if (data.cpu) {
+                    document.getElementById('sidebar-load').textContent = 
+                        data.cpu.load.toFixed(2);
+                }
+                
+                // Call page-specific handler if exists
+                if (window.handleMetricsUpdate) {
+                    window.handleMetricsUpdate(data);
+                }
+            });
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Highlight active nav link
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Initialize WebSocket if authenticated
+            if (authToken && window.location.pathname !== '/login') {
+                initWebSocket();
+            }
+        });
+        
+        // Logout function
+        function logout() {
+            localStorage.removeItem('ddos_auth_token');
+            window.location.href = '/login';
+        }
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

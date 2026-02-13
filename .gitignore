@@ -1,0 +1,14 @@
+# Logs and evidence
+*.log
+*.pid
+*.tar.gz
+/ubuntu-server/logs/
+/evidence/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
