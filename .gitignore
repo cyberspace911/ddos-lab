@@ -1,0 +1,37 @@
+# Logs and evidence
+*.log
+*.pid
+*.tar.gz
+*.old
+/ubuntu-server/logs/
+/kali-attacker/logs/
+/shared/logs/
+/evidence/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS files
+.DS_Store
+Thumbs.db
+.desktop.ini
+.swp
+.swo
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Local config
+*.local
+*.backup
+/config.local
+
+# Temporary files
+*.tmp
+*.temp
+*~

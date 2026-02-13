@@ -1,0 +1,4 @@
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0      0 192.168.1.6:58062       192.168.1.5:80          TIME_WAIT  
+tcp        0      0 192.168.1.6:58064       192.168.1.5:80          TIME_WAIT  
