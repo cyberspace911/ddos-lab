@@ -2,7 +2,10 @@
 *.log
 *.pid
 *.old
-/ubuntu-server/logs/
+/ubuntu-server/logs/*.log
+/ubuntu-server/logs/*.pid
+/ubuntu-server/logs/*.old
+!/ubuntu-server/logs/.gitkeep
 /kali-attacker/logs/
 /shared/logs/
 /evidence/
@@ -52,3 +55,5 @@ Thumbs.db
 
 # Old attack analysis test data (already removed)
 /kali-attacker/analysis/attack_*/
+# Allow empty folders
+!.gitkeep
