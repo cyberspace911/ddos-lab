@@ -35,3 +35,13 @@ Thumbs.db
 *.tmp
 *.temp
 *~
+
+# Unnecessary files
+/ubuntu-server/web-dashboard/
+/ubuntu-server/ddos-dashboard.service
+/ubuntu-server/fix_web_interface.sh
+/ubuntu-server/install_dashboard.sh
+/ubuntu-server/setup_web_monitor.sh
+*.db
+*.db-journal
+*.tar.gz
