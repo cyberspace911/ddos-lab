@@ -35,3 +35,6 @@ Thumbs.db
 *.tmp
 *.temp
 *~
+
+# Old attack analysis test data
+/kali-attacker/analysis/attack_*/
